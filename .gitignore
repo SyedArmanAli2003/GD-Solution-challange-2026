@@ -1,6 +1,7 @@
 .env
 .env*.local
 node_modules/
+deploy_dist/
 .firebase/
 
 # InsForge & AI agent skills
