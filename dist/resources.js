@@ -14955,6 +14955,10 @@ var auth = insforge.auth;
 var realtime = insforge.realtime;
 
 // src/resources.js
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
 var resList = document.getElementById("resList");
 var addResBtn = document.getElementById("addResBtn");
 var resModal = document.getElementById("resModal");
@@ -14962,10 +14966,10 @@ var cancelRes = document.getElementById("cancelRes");
 var resForm = document.getElementById("resForm");
 var submitRes = document.getElementById("submitRes");
 async function ensureSession() {
-  const session = await auth.getCurrentUser();
-  if (!session?.user) {
-    const { error } = await auth.signInAnonymously();
-    if (error) throw error;
+  const { data } = await auth.getCurrentUser();
+  if (!data?.user) {
+    window.location.href = "auth.html";
+    throw new Error("Not authenticated");
   }
 }
 function listenToResources() {
@@ -14983,10 +14987,10 @@ function listenToResources() {
       const rawNum = (r.contact || "").replace(/[^\d+]/g, "");
       card.innerHTML = `
         <div>
-          <div class="res-title-row"><span class="res-name">${r.name}</span><span class="res-type">${r.type}</span></div>
-          <div class="res-meta">\u{1F4CD} ${r.address || ""}</div>
+          <div class="res-title-row"><span class="res-name">${escapeHtml(r.name)}</span><span class="res-type">${escapeHtml(r.type)}</span></div>
+          <div class="res-meta">\u{1F4CD} ${escapeHtml(r.address || "")}</div>
         </div>
-        <a href="tel:${rawNum}" class="res-contact">\u{1F4DE} ${r.contact}</a>`;
+        <a href="tel:${rawNum}" class="res-contact">\u{1F4DE} ${escapeHtml(r.contact)}</a>`;
       resList.appendChild(card);
     });
     if (count === 0) resList.innerHTML = '<p style="color:var(--text-dim);padding:2rem 0;">No community resources added yet.</p>';
@@ -15016,10 +15020,10 @@ resForm?.addEventListener("submit", async (e) => {
   try {
     await ensureSession();
     const { error } = await db.from("resources").insert([{
-      name: document.getElementById("rName").value.trim(),
+      name: (document.getElementById("rName").value || "").trim().slice(0, 200),
       type: document.getElementById("rType").value,
-      contact: document.getElementById("rContact").value.trim(),
-      address: document.getElementById("rAddress").value.trim()
+      contact: (document.getElementById("rContact").value || "").trim().replace(/[^\d+]/g, "").slice(0, 20),
+      address: (document.getElementById("rAddress").value || "").trim().slice(0, 300)
     }]);
     if (error) throw error;
     showToast("Resource added!");

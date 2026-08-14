@@ -8,10 +8,10 @@ const statResolved = document.getElementById('statResolved')
 let activeFilter = 'all'
 
 async function ensureSession() {
-  const session = await auth.getCurrentUser()
-  if (!session?.user) {
-    const { error } = await auth.signInAnonymously()
-    if (error) throw error
+  const { data } = await auth.getCurrentUser()
+  if (!data?.user) {
+    window.location.href = 'auth.html'
+    throw new Error('Not authenticated')
   }
 }
 

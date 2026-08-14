@@ -14955,12 +14955,17 @@ var auth = insforge.auth;
 var realtime = insforge.realtime;
 
 // src/auth.js
-auth.onAuthStateChange((event, session) => {
-  if (session?.user) {
+function isValidPhone(p) {
+  return /^[\d+\-(). ]{7,20}$/.test(p);
+}
+async function checkAuth() {
+  const { data } = await auth.getCurrentUser();
+  if (data?.user) {
     console.log("[auth] Already signed in \u2014 redirecting");
     window.location.href = "reporter.html";
   }
-});
+}
+checkAuth();
 function showErr(id, msg) {
   const el = document.getElementById(id);
   if (el) {
@@ -15029,7 +15034,7 @@ document.getElementById("btnForgot")?.addEventListener("click", async () => {
     return;
   }
   try {
-    const { error } = await auth.resetPasswordEmail({ email });
+    const { error } = await auth.sendResetPasswordEmail({ email });
     if (error) throw error;
     hideErr("siError");
     showToast("Password reset email sent!");
@@ -15047,6 +15052,10 @@ document.getElementById("btnCreate")?.addEventListener("click", async () => {
   const confirm = document.getElementById("regConfirm")?.value;
   if (!name || !email || !phone || !pass || !confirm) {
     showErr("regError", "Please fill in all required fields.");
+    return;
+  }
+  if (!isValidPhone(phone)) {
+    showErr("regError", "Please enter a valid phone number (7-20 digits).");
     return;
   }
   if (pass.length < 6) {
@@ -15070,10 +15079,10 @@ document.getElementById("btnCreate")?.addEventListener("click", async () => {
     const profile = {
       id: data.user.id,
       email,
-      full_name: name,
-      name,
-      phone,
-      address: address || "",
+      full_name: name.trim(),
+      name: name.trim(),
+      phone: phone.replace(/[^\d+]/g, ""),
+      address: (address || "").trim(),
       role: "reporter",
       created_at: (/* @__PURE__ */ new Date()).toISOString(),
       total_reports: 0,

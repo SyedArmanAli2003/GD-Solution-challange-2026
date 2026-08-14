@@ -34,8 +34,8 @@ initInsForge().then(() => {
     res.status(500).json({ error: 'Internal server error' });
   });
 
-  app.listen(config.port, () => {
-    console.log(`ResQNet backend running on port ${config.port}`);
+  app.listen(config.port, '0.0.0.0', () => {
+    console.log(`ResQNet backend running on port ${config.port} (0.0.0.0)`);
     console.log(`Frontend: http://localhost:${config.port}/auth.html`);
   });
 }).catch(err => {

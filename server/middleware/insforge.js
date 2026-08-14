@@ -3,25 +3,20 @@ require('dotenv').config({ path: require('path').resolve(__dirname, '..', '..', 
 
 let dbInstance;
 
-async function initInsForge() {
-  const sdk = await import('@insforge/sdk');
-  const supabaseUrl = process.env.INSFORGE_URL || 'https://pk5eng7w.ap-southeast.insforge.app';
-  const supabaseKey = process.env.INSFORGE_SERVICE_ROLE_KEY || process.env.INSFORGE_ANON_KEY;
+function getDb() {
+  if (!dbInstance) {
+    const { createClient } = require('@insforge/sdk');
+    const supabaseUrl = process.env.INSFORGE_URL || 'https://pk5eng7w.ap-southeast.insforge.app';
+    const supabaseKey = process.env.INSFORGE_SERVICE_ROLE_KEY || process.env.INSFORGE_ANON_KEY || 'anon_8cdce68be8188b489d5c12ad3b86adff9054b6599225e0f9dc950f611e7468a8';
 
-  if (!supabaseKey) {
-    console.warn('[InsForge] Warning: Missing INSFORGE_SERVICE_ROLE_KEY or INSFORGE_ANON_KEY in env.');
+    dbInstance = createClient({ baseUrl: supabaseUrl, anonKey: supabaseKey });
+    console.log('[InsForge] Client initialized');
   }
-
-  dbInstance = sdk.createClient(supabaseUrl, supabaseKey);
-  console.log('[InsForge] SDK initialized');
   return dbInstance;
 }
 
-function getDb() {
-  if (!dbInstance) {
-    throw new Error('InsForge not initialized yet! Call initInsForge first.');
-  }
-  return dbInstance;
+async function initInsForge() {
+  return getDb();
 }
 
 module.exports = { initInsForge, getDb };

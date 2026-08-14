@@ -1,12 +1,16 @@
 import { insforge, db, auth } from './insforge.js'
 
+function isValidPhone(p) { return /^[\d+\-(). ]{7,20}$/.test(p) }
+
 // ── InsForge Auth — redirect signed-in users away from the auth page ──────────
-auth.onAuthStateChange((event, session) => {
-  if (session?.user) {
+async function checkAuth() {
+  const { data } = await auth.getCurrentUser()
+  if (data?.user) {
     console.log('[auth] Already signed in — redirecting')
     window.location.href = 'reporter.html'
   }
-})
+}
+checkAuth()
 
 function showErr(id, msg) {
   const el = document.getElementById(id)
@@ -77,7 +81,7 @@ document.getElementById('btnForgot')?.addEventListener('click', async () => {
   const email = document.getElementById('siEmail')?.value?.trim()
   if (!email) { showErr('siError', 'Enter your email address first.'); return }
   try {
-    const { error } = await auth.resetPasswordEmail({ email })
+    const { error } = await auth.sendResetPasswordEmail({ email })
     if (error) throw error
     hideErr('siError')
     showToast('Password reset email sent!')
@@ -96,6 +100,7 @@ document.getElementById('btnCreate')?.addEventListener('click', async () => {
   const confirm = document.getElementById('regConfirm')?.value
 
   if (!name || !email || !phone || !pass || !confirm) { showErr('regError', 'Please fill in all required fields.'); return }
+  if (!isValidPhone(phone)) { showErr('regError', 'Please enter a valid phone number (7-20 digits).'); return }
   if (pass.length < 6) { showErr('regError', 'Password must be at least 6 characters.'); return }
   if (pass !== confirm) { showErr('regError', 'Passwords do not match.'); return }
 
@@ -114,10 +119,10 @@ document.getElementById('btnCreate')?.addEventListener('click', async () => {
     const profile = {
       id: data.user.id,
       email,
-      full_name: name,
-      name,
-      phone,
-      address: address || '',
+      full_name: name.trim(),
+      name: name.trim(),
+      phone: phone.replace(/[^\d+]/g, ''),
+      address: (address || '').trim(),
       role: 'reporter',
       created_at: new Date().toISOString(),
       total_reports: 0,

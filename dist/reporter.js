@@ -14955,6 +14955,10 @@ var auth = insforge.auth;
 var realtime = insforge.realtime;
 
 // src/reporter.js
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
 var BACKEND_URL = typeof CONFIG !== "undefined" && CONFIG.BACKEND_URL ? CONFIG.BACKEND_URL : "http://localhost:3000";
 var sosBtn = document.getElementById("sosBtn");
 var sosProgress = document.getElementById("sosProgressCircle");
@@ -15168,44 +15172,90 @@ submitBtn?.addEventListener("click", async () => {
     alert("Please select a category");
     return;
   }
+  const desc = (incidentDesc.value || "").trim().slice(0, 500);
   submitBtn.disabled = true;
   submitBtn.textContent = "Sending...";
   try {
     const userProfile = JSON.parse(sessionStorage.getItem("userProfile") || "null");
     const safeLocation = currentAddress || (currentCoords ? formatCoords(currentCoords.lat, currentCoords.lng) : "Unknown location");
-    const session = await auth.getCurrentUser();
-    const { data, error } = await db.from("incidents").insert([{
+    const { data: sessionData } = await auth.getCurrentUser();
+    const user = sessionData?.user || {};
+    const tokenStr = sessionData?.session?.access_token || "";
+    const payload = {
       type: selectedCategory,
-      description: incidentDesc.value,
+      description: desc,
       location: safeLocation,
       coordinates: currentCoords,
-      voice_transcript: voiceTranscript,
-      status: "pending",
-      triage_complete: false,
-      reporter_id: session?.user?.id || null,
-      reporter_name: userProfile?.fullName || session?.user?.email || "Anonymous user",
-      reporter_phone: userProfile?.phone || ""
-    }]).select();
-    if (error) throw error;
-    const docId = data?.[0]?.id;
-    if (!docId) throw new Error("No ID returned");
-    await db.from("incident_timeline").insert([{
-      incident_id: docId,
-      action: "created",
-      actor: userProfile?.fullName || session?.user?.email || "reporter",
-      details: `${selectedCategory} incident reported${safeLocation !== "Unknown location" ? " at " + safeLocation.substring(0, 50) : ""}`,
-      created_at: (/* @__PURE__ */ new Date()).toISOString()
-    }]);
+      voiceTranscript,
+      reporterName: userProfile?.fullName || user.email || "Anonymous user",
+      reporterPhone: (userProfile?.phone || "").replace(/[^\d+]/g, "")
+    };
+    let docId = null;
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/incidents`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${tokenStr}`
+        },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const json = await res.json();
+        docId = json.id;
+      } else if (res.status === 429) {
+        const errData = await res.json();
+        const submitError = document.getElementById("submitError");
+        if (submitError) {
+          submitError.textContent = errData.error || "Too many reports. Please call emergency services.";
+          submitError.style.display = "block";
+        }
+        return;
+      }
+    } catch (apiErr) {
+      console.warn("[Reporter] Backend API call failed, falling back to direct DB insert:", apiErr.message);
+    }
+    if (!docId) {
+      const { data: directData, error: dbErr } = await db.from("incidents").insert([{
+        type: selectedCategory,
+        description: desc,
+        location: safeLocation,
+        coordinates: currentCoords,
+        voice_transcript: voiceTranscript,
+        status: "pending",
+        triage_complete: false,
+        reporter_id: user.id || null,
+        reporter_name: userProfile?.fullName || user.email || "Anonymous user"
+      }]).select("id").single();
+      if (dbErr) throw dbErr;
+      docId = directData.id;
+    }
     if (categoryModal) categoryModal.style.display = "none";
     if (successModal) successModal.style.display = "flex";
     try {
       const preferredModel = localStorage.getItem("resqnet_preferred_model") || "nim-deepseek";
-      const triageResponse = await fetch(`${BACKEND_URL}/api/triage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: selectedCategory, description: incidentDesc.value, voiceTranscript, location: safeLocation, preferredModel })
-      });
-      const triageResult = triageResponse.ok ? await triageResponse.json() : null;
+      let triageResult = null;
+      try {
+        const triageResponse = await fetch(`${BACKEND_URL}/api/triage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: selectedCategory, description: desc, voiceTranscript, location: safeLocation, preferredModel })
+        });
+        if (triageResponse.ok) {
+          triageResult = await triageResponse.json();
+        }
+      } catch (e) {
+        console.warn("[Triage] API failed, using emergency client rules fallback");
+      }
+      if (!triageResult) {
+        const text = `${desc} ${voiceTranscript}`.toLowerCase();
+        const isCritical = ["bleeding", "unconscious", "heart", "stroke", "trapped", "collapse", "fire", "explosion"].some((h) => text.includes(h));
+        if (isCritical || selectedCategory === "Medical" || selectedCategory === "Disaster") {
+          triageResult = { level: isCritical ? 1 : 2, levelName: isCritical ? "Critical" : "Severe", color: isCritical ? "red" : "orange", reasoning: "Priority emergency assessment.", volunteerTypes: ["medical", "rapid-response"], estimatedMinutes: isCritical ? 8 : 15, modelUsed: "Emergency rules" };
+        } else {
+          triageResult = { level: 3, levelName: "Moderate", color: "yellow", reasoning: "Standard priority response.", volunteerTypes: ["support"], estimatedMinutes: 25, modelUsed: "Emergency rules" };
+        }
+      }
       const updates = {
         triage_level: triageResult?.level || null,
         triage_level_name: triageResult?.levelName || null,
@@ -15214,7 +15264,7 @@ submitBtn?.addEventListener("click", async () => {
         volunteer_types: triageResult?.volunteerTypes || [],
         estimated_minutes: triageResult?.estimatedMinutes || null,
         triage_complete: true,
-        model_used: triageResult?.modelUsed || "backend"
+        model_used: triageResult?.modelUsed || "Emergency rules"
       };
       await db.from("incidents").update(updates).eq("id", docId);
       await db.from("incident_timeline").insert([{
@@ -15225,7 +15275,7 @@ submitBtn?.addEventListener("click", async () => {
         created_at: (/* @__PURE__ */ new Date()).toISOString()
       }]);
     } catch (triageErr) {
-      console.warn("[Triage] Backend call failed:", triageErr.message);
+      console.warn("[Triage] Process note:", triageErr.message);
     }
   } catch (err) {
     console.error("[Submit] failed:", err);
@@ -15244,7 +15294,6 @@ btnSubmitAnother?.addEventListener("click", () => {
   catBtns.forEach((b) => b.classList.remove("active"));
 });
 function pollIncidents() {
-  const session = auth.getCurrentUser();
   db.from("incidents").select("*").order("created_at", { ascending: false }).limit(50).then(({ data, error }) => {
     if (error || !data) return;
     incidentsList.innerHTML = "";
@@ -15262,10 +15311,10 @@ function pollIncidents() {
       card.style.borderLeftColor = color;
       const timeLabel = inc.created_at ? new Date(inc.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Just now";
       card.innerHTML = `
-        <div class="card-top"><span style="color:${color}">${inc.triage_level_name || inc.type}</span><span>${timeLabel}</span></div>
-        <h3 class="card-title">${inc.type} emergency</h3>
-        <p class="card-loc">${inc.location || "Location unavailable"}</p>
-        ${inc.description ? `<p class="card-desc">"${inc.description}"</p>` : ""}`;
+        <div class="card-top"><span style="color:${color}">${escapeHtml(inc.triage_level_name || inc.type)}</span><span>${timeLabel}</span></div>
+        <h3 class="card-title">${escapeHtml(inc.type)} emergency</h3>
+        <p class="card-loc">${escapeHtml(inc.location || "Location unavailable")}</p>
+        ${inc.description ? `<p class="card-desc">"${escapeHtml(inc.description)}"</p>` : ""}`;
       incidentsList.appendChild(card);
     });
     if (activeCountEl) activeCountEl.textContent = active;
@@ -15274,15 +15323,17 @@ function pollIncidents() {
     if (statResolvedEl) statResolvedEl.textContent = resolved;
   });
 }
-auth.onAuthStateChange((event, session) => {
-  if (!session?.user) {
+async function initApp() {
+  const { data } = await auth.getCurrentUser();
+  if (!data?.user) {
     window.location.href = "auth.html";
     return;
   }
-  loadUserProfile(session.user);
+  loadUserProfile(data.user);
   pollIncidents();
   pollInterval = setInterval(pollIncidents, 5e3);
-});
+}
+initApp();
 signOutBtn?.addEventListener("click", async () => {
   signOutBtn.disabled = true;
   try {

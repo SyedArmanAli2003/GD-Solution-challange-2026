@@ -75,44 +75,38 @@
     <main>
       <section>
         <h2 style="margin-bottom: 1.5rem;">Emergency Helplines</h2>
-        <div class="grid-helplines">
-          <a href="tel:108" class="help-card">
-            <div>
-              <div class="help-top"><span class="help-icon">🚑</span><span class="help-name">Medical Emergency</span></div>
-              <div class="help-num">108</div>
-            </div>
-            <div class="btn-call">Call now</div>
-          </a>
-          <a href="tel:100" class="help-card">
-            <div>
-              <div class="help-top"><span class="help-icon">🚓</span><span class="help-name">Police</span></div>
-              <div class="help-num">100</div>
-            </div>
-            <div class="btn-call">Call now</div>
-          </a>
-          <a href="tel:101" class="help-card">
-            <div>
-              <div class="help-top"><span class="help-icon">🚒</span><span class="help-name">Fire Brigade</span></div>
-              <div class="help-num">101</div>
-            </div>
-            <div class="btn-call">Call now</div>
-          </a>
-          <a href="tel:1078" class="help-card">
-            <div>
-              <div class="help-top"><span class="help-icon">🌊</span><span class="help-name">Disaster Relief (NDRF)</span></div>
-              <div class="help-num">1078</div>
-            </div>
-            <div class="btn-call">Call now</div>
-          </a>
-          <a href="tel:03432546000" class="help-card">
-            <div>
-              <div class="help-top"><span class="help-icon">🏥</span><span class="help-name">Ambulance (Durgapur)</span></div>
-              <div class="help-num">0343-2546000</div>
-            </div>
-            <div class="btn-call">Call now</div>
-          </a>
+        <div class="grid-helplines" id="helplinesGrid">
+          <p style="color:var(--text-dim)">Loading...</p>
         </div>
       </section>
+
+      <script>
+        // ── Emergency numbers — change region here ──
+        const EMERGENCY_NUMBERS = {
+          region: 'India',
+          numbers: [
+            { icon: '🚑', label: 'Medical Emergency', number: '108' },
+            { icon: '🚓', label: 'Police', number: '100' },
+            { icon: '🚒', label: 'Fire Brigade', number: '101' },
+            { icon: '🌊', label: 'Disaster Relief (NDRF)', number: '1078' },
+            { icon: '🏥', label: 'Ambulance (Durgapur)', number: '0343-2546000' }
+          ]
+        }
+
+        const grid = document.getElementById('helplinesGrid')
+        if (grid) {
+          grid.innerHTML = EMERGENCY_NUMBERS.numbers.map(n => {
+            const raw = n.number.replace(/[^\d+]/g, '')
+            return `<a href="tel:${raw}" class="help-card">
+              <div>
+                <div class="help-top"><span class="help-icon">${n.icon}</span><span class="help-name">${n.label}</span></div>
+                <div class="help-num">${n.number}</div>
+              </div>
+              <div class="btn-call">Call now</div>
+            </a>`
+          }).join('')
+        }
+      </script>
 
       <section>
         <div class="section-header">
@@ -134,7 +128,7 @@
       <form id="resForm" style="display:flex; flex-direction:column; gap:1rem;">
         <div>
           <label style="display:block; margin-bottom:0.4rem; color:var(--text-dim); font-size:0.9rem;">Resource Name</label>
-          <input type="text" id="rName" class="modal-textarea" style="height:auto; padding:0.8rem;" required />
+          <input type="text" id="rName" class="modal-textarea" style="height:auto; padding:0.8rem;" required maxlength="100" />
         </div>
         <div>
           <label style="display:block; margin-bottom:0.4rem; color:var(--text-dim); font-size:0.9rem;">Type</label>
@@ -147,11 +141,11 @@
         </div>
         <div>
           <label style="display:block; margin-bottom:0.4rem; color:var(--text-dim); font-size:0.9rem;">Contact Number</label>
-          <input type="tel" id="rContact" class="modal-textarea" style="height:auto; padding:0.8rem;" required />
+          <input type="tel" id="rContact" class="modal-textarea" style="height:auto; padding:0.8rem;" required maxlength="30" />
         </div>
         <div>
           <label style="display:block; margin-bottom:0.4rem; color:var(--text-dim); font-size:0.9rem;">Address / Location</label>
-          <input type="text" id="rAddress" class="modal-textarea" style="height:auto; padding:0.8rem;" required />
+          <input type="text" id="rAddress" class="modal-textarea" style="height:auto; padding:0.8rem;" required maxlength="150" />
         </div>
         <div class="modal-footer" style="margin-top: 1rem;">
           <button type="submit" id="submitRes" class="btn-primary">Add Resource</button>

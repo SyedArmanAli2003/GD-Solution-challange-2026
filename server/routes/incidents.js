@@ -3,9 +3,11 @@ const router = express.Router();
 const { getDb } = require('../middleware/insforge');
 const { verifyToken } = require('../middleware/auth');
 
+const { rateLimitPost } = require('../middleware/rateLimit');
+
 router.get('/', async (_req, res) => {
   try {
-    const { data, error } = await getDb().from('incidents').select('*').order('created_at', { ascending: false });
+    const { data, error } = await getDb().database.from('incidents').select('*').order('created_at', { ascending: false });
     if (error) throw error;
     res.json(data);
   } catch (err) {
@@ -16,7 +18,7 @@ router.get('/', async (_req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    const { data, error } = await getDb().from('incidents').select('*').eq('id', req.params.id).single();
+    const { data, error } = await getDb().database.from('incidents').select('*').eq('id', req.params.id).single();
     if (error) throw error;
     if (!data) return res.status(404).json({ error: 'Incident not found' });
     res.json(data);
@@ -26,12 +28,12 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.post('/', verifyToken, async (req, res) => {
+router.post('/', rateLimitPost, verifyToken, async (req, res) => {
   try {
     const { type, description, location, coordinates, voiceTranscript, reporterName, reporterPhone } = req.body;
     if (!type) return res.status(400).json({ error: 'Incident type is required' });
 
-    const { data: incident, error } = await getDb().from('incidents').insert([{
+    const { data: incident, error } = await getDb().database.from('incidents').insert([{
       type,
       description: description || '',
       location: location || 'Unknown location',
@@ -39,13 +41,13 @@ router.post('/', verifyToken, async (req, res) => {
       voice_transcript: voiceTranscript || '',
       status: 'pending',
       triage_complete: false,
-      reporter_id: req.user?.uid || req.user?.id || null, // Allow anon
+      reporter_id: req.user?.uid || req.user?.id || null,
       reporter_name: reporterName || req.user?.name || 'Anonymous',
     }]).select('id').single();
 
     if (error) throw error;
 
-    await getDb().from('incident_timeline').insert([{
+    await getDb().database.from('incident_timeline').insert([{
       incident_id: incident.id,
       action: 'created',
       actor: reporterName || req.user?.email || 'reporter',
@@ -74,17 +76,17 @@ router.patch('/:id', verifyToken, async (req, res) => {
     if (mappedUpdates.status === 'resolved') {
       mappedUpdates.resolved_at = new Date().toISOString();
 
-      const { data: incident } = await getDb().from('incidents').select('assigned_volunteer_id').eq('id', req.params.id).single();
-      
+      const { data: incident } = await getDb().database.from('incidents').select('assigned_volunteer_id').eq('id', req.params.id).single();
+
       if (incident?.assigned_volunteer_id) {
-        await getDb().from('volunteers').update({
+        await getDb().database.from('volunteers').update({
           available: true,
           active_incident_id: null
         }).eq('id', incident.assigned_volunteer_id);
       }
     }
 
-    const { error } = await getDb().from('incidents').update(mappedUpdates).eq('id', req.params.id);
+    const { error } = await getDb().database.from('incidents').update(mappedUpdates).eq('id', req.params.id);
     if (error) throw error;
 
     res.json({ message: 'Incident updated' });
@@ -96,7 +98,7 @@ router.patch('/:id', verifyToken, async (req, res) => {
 
 router.get('/:id/timeline', async (req, res) => {
   try {
-    const { data, error } = await getDb().from('incident_timeline').select('*').eq('incident_id', req.params.id).order('created_at', { ascending: true });
+    const { data, error } = await getDb().database.from('incident_timeline').select('*').eq('incident_id', req.params.id).order('created_at', { ascending: true });
     if (error) throw error;
     res.json(data);
   } catch (err) {

@@ -1,5 +1,5 @@
-config.js
 .env
+.env*.local
 node_modules/
 .firebase/
 
@@ -17,6 +17,3 @@ node_modules/
 .roo
 .trae
 .windsurf
-
-# Local environment secrets
-.env*.local

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { callAI, AI_MODELS } = require('./aiCascade');
+const { rateLimitPost } = require('../middleware/rateLimit');
 
 // ── Rules-based fallback ───────────────────────────────────────────────────────
 function fallbackTriage(type, description = '', voice = '') {
@@ -30,7 +31,7 @@ router.get('/models', (_req, res) => {
 });
 
 // ── POST /api/triage ──────────────────────────────────────────────────────────
-router.post('/', async (req, res) => {
+router.post('/', rateLimitPost, async (req, res) => {
   try {
     const { type, description, voiceTranscript, location, preferredModel } = req.body;
     if (!type) return res.status(400).json({ error: 'Incident type is required' });

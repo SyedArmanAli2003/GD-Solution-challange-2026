@@ -4,7 +4,7 @@ const { getDb } = require('../middleware/insforge');
 
 router.get('/', async (_req, res) => {
   try {
-    const { data, error } = await getDb().from('resources').select('*').order('created_at', { ascending: false });
+    const { data, error } = await getDb().database.from('resources').select('*').order('created_at', { ascending: false });
     if (error) throw error;
     res.json(data);
   } catch (err) {
@@ -20,7 +20,7 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Name, type, and contact are required' });
     }
 
-    const { data, error } = await getDb().from('resources').insert([{
+    const { data, error } = await getDb().database.from('resources').insert([{
       name,
       type,
       contact,

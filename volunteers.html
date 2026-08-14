@@ -160,11 +160,11 @@
           <div class="form-grid">
             <div class="input-group">
               <label for="volName">Full Name</label>
-              <input type="text" id="volName" class="form-input" required />
+              <input type="text" id="volName" class="form-input" required maxlength="50" />
             </div>
             <div class="input-group">
               <label for="volPhone">Phone Number</label>
-              <input type="tel" id="volPhone" class="form-input" required />
+              <input type="tel" id="volPhone" class="form-input" required maxlength="20" />
             </div>
             <div class="input-group">
               <label for="volSkill">Primary Skill</label>
@@ -177,7 +177,7 @@
             </div>
             <div class="input-group">
               <label for="location">Location <small id="locStatus" style="color:var(--text-dim)">(capturing...)</small></label>
-              <input type="text" id="location" class="form-input" placeholder="Capturing GPS..." required />
+              <input type="text" id="location" class="form-input" placeholder="Capturing GPS..." required maxlength="100" />
             </div>
           </div>
           <div style="display:flex; justify-content: space-between; align-items: center;">

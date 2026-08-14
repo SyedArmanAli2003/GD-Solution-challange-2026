@@ -14962,10 +14962,10 @@ var statPending = document.getElementById("statPending");
 var statResolved = document.getElementById("statResolved");
 var activeFilter = "all";
 async function ensureSession() {
-  const session = await auth.getCurrentUser();
-  if (!session?.user) {
-    const { error } = await auth.signInAnonymously();
-    if (error) throw error;
+  const { data } = await auth.getCurrentUser();
+  if (!data?.user) {
+    window.location.href = "auth.html";
+    throw new Error("Not authenticated");
   }
 }
 function timeAgo(date) {

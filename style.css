@@ -3,6 +3,22 @@
    Matches the 3-column layout provided in the screenshot.
 ========================================================================= */
 
+/* ── Emergency disclaimer banner (amber warning, not red) ── */
+.disclaimer-amber {
+  background: rgba(251, 192, 45, 0.08);
+  border: 1px solid rgba(251, 192, 45, 0.25);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.82rem;
+  color: #e8c84a;
+  line-height: 1.5;
+  text-align: center;
+}
+.disclaimer-amber strong {
+  color: #f5d742;
+  font-weight: 700;
+}
+
 :root {
   --bg-deep: #09090A;
   --bg-sidebar: #0D0D0E;

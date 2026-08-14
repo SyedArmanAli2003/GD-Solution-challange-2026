@@ -14955,6 +14955,10 @@ var auth = insforge.auth;
 var realtime = insforge.realtime;
 
 // src/coordinator.js
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
 var BACKEND_URL = typeof CONFIG !== "undefined" && CONFIG.BACKEND_URL ? CONFIG.BACKEND_URL : "http://localhost:3000";
 var authModal = document.getElementById("authModal");
 var emailInput = document.getElementById("emailInput");
@@ -14989,13 +14993,15 @@ function showLoginForm() {
   coordApp.style.display = "none";
   authModal.style.display = "flex";
 }
-auth.onAuthStateChange((event, session) => {
-  if (session?.user && !session.user.isAnonymous) {
-    showDashboard(session.user);
+async function initApp() {
+  const { data } = await auth.getCurrentUser();
+  if (data?.user) {
+    showDashboard(data.user);
   } else {
     showLoginForm();
   }
-});
+}
+initApp();
 signInBtn?.addEventListener("click", async () => {
   const email = emailInput.value.trim();
   const password = passInput.value;
@@ -15154,8 +15160,8 @@ function getVolunteerMatches(incident, limit = 3) {
 async function dispatchVolunteer(incidentId, volunteerId) {
   const volunteer = volunteerPool.find((v) => v.id === volunteerId);
   if (!volunteer) throw new Error("Volunteer not found");
-  const session = await auth.getCurrentUser();
-  const email = session?.user?.email || "coordinator";
+  const { data: sessionData } = await auth.getCurrentUser();
+  const email = sessionData?.user?.email || "coordinator";
   await Promise.all([
     db.from("incidents").update({
       assigned_volunteer_id: volunteerId,
@@ -15195,18 +15201,18 @@ function renderList(incidents) {
         <span class="coord-time-ago">${inc.created_at ? timeAgo(new Date(inc.created_at)) : "just now"}</span>
       </div>
       <div class="coord-card-body">
-        <h3 class="coord-card-title">${inc.type || "Unknown Crisis"}</h3>
-        <p class="coord-card-location">\u{1F4CD} ${locationLabel} &nbsp;&nbsp; \u{1F464} ${inc.reporter_name || "Anonymous"}</p>
-        ${inc.description ? `<p class="coord-card-desc">"${inc.description}"</p>` : ""}
+        <h3 class="coord-card-title">${escapeHtml(inc.type || "Unknown Crisis")}</h3>
+        <p class="coord-card-location">\u{1F4CD} ${escapeHtml(locationLabel)} &nbsp;&nbsp; \u{1F464} ${escapeHtml(inc.reporter_name || "Anonymous")}</p>
+        ${inc.description ? `<p class="coord-card-desc">"${escapeHtml(inc.description)}"</p>` : ""}
       </div>
       <div class="coord-card-footer">
         <div class="coord-chip-row">
-          ${(inc.volunteer_types || getExpectedSkills(inc.type)).map((t) => `<span class="coord-chip">${t}</span>`).join("")}
+          ${(inc.volunteer_types || getExpectedSkills(inc.type)).map((t) => `<span class="coord-chip">${escapeHtml(t)}</span>`).join("")}
           <span class="coord-chip">\u{1F534} Active</span>
-          ${inc.assigned_volunteer_name ? `<span class="coord-chip" style="border-color:#2f9444;color:#9FE1CB;">Assigned: ${inc.assigned_volunteer_name}</span>` : ""}
+          ${inc.assigned_volunteer_name ? `<span class="coord-chip" style="border-color:#2f9444;color:#9FE1CB;">Assigned: ${escapeHtml(inc.assigned_volunteer_name)}</span>` : ""}
         </div>
         <div style="display:flex;gap:8px">
-          ${!inc.assigned_volunteer_id ? matches.map((m) => `<button class="coord-pill dispatch-btn" data-incident-id="${inc.id}" data-volunteer-id="${m.id}" style="cursor:pointer;padding:4px 8px;font-size:11px;">${m.name || "V"} \xB7 ${m.skill || ""}</button>`).join("") : ""}
+          ${!inc.assigned_volunteer_id ? matches.map((m) => `<button class="coord-pill dispatch-btn" data-incident-id="${inc.id}" data-volunteer-id="${m.id}" style="cursor:pointer;padding:4px 8px;font-size:11px;">${escapeHtml(m.name || "V")} \xB7 ${escapeHtml(m.skill || "")}</button>`).join("") : ""}
           <button class="coord-resolve-btn resolve-btn" data-id="${inc.id}">Mark Resolved</button>
         </div>
       </div>`;
@@ -15219,8 +15225,8 @@ function renderList(incidents) {
       btn.textContent = "Resolving\u2026";
       try {
         const target = latestIncidents.find((i) => i.id === id);
-        const session = await auth.getCurrentUser();
-        const email = session?.user?.email || "coordinator";
+        const { data: sessionData2 } = await auth.getCurrentUser();
+        const email = sessionData2?.user?.email || "coordinator";
         await db.from("incidents").update({ status: "resolved", resolved_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", id);
         await addTimelineEntry(id, "resolved", email, "Incident marked as resolved");
         if (target?.assigned_volunteer_id) {
@@ -15264,8 +15270,8 @@ function renderVolunteers() {
     card.style.cssText = "background:var(--bg-surface);padding:1rem;border-radius:8px;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;";
     card.innerHTML = `
       <div style="display:flex;align-items:center;gap:1rem;">
-        <div style="width:40px;height:40px;border-radius:50%;background:var(--bg-deep);display:flex;align-items:center;justify-content:center;font-weight:bold;">${(v.name || "V")[0].toUpperCase()}</div>
-        <div><div style="font-weight:600;">${v.name} <span style="margin-left:0.5rem;font-size:11px;">${v.skill}</span></div><div style="font-size:0.85rem;color:var(--text-dim);">\u{1F4CD} ${v.location || "Unknown"}</div></div>
+        <div style="width:40px;height:40px;border-radius:50%;background:var(--bg-deep);display:flex;align-items:center;justify-content:center;font-weight:bold;">${escapeHtml((v.name || "V")[0].toUpperCase())}</div>
+        <div><div style="font-weight:600;">${escapeHtml(v.name)} <span style="margin-left:0.5rem;font-size:11px;">${escapeHtml(v.skill)}</span></div><div style="font-size:0.85rem;color:var(--text-dim);">\u{1F4CD} ${escapeHtml(v.location || "Unknown")}</div></div>
       </div>
       <span style="color:${v.available ? "var(--accent-green)" : "var(--accent-red)"}">${v.available ? "Available" : "Busy"}</span>`;
     list.appendChild(card);
@@ -15376,8 +15382,8 @@ function loadHistory() {
       card.style.cssText = `background:var(--bg-surface);padding:1rem;border-radius:8px;border:1px solid var(--border);border-left:4px solid ${triage.color};display:flex;justify-content:space-between;align-items:center;`;
       card.innerHTML = `
         <div>
-          <div style="font-weight:600;margin-bottom:0.4rem;">${inc.type || "Emergency"} <span style="margin-left:0.5rem;font-size:11px;">${triage.label}</span></div>
-          <div style="font-size:0.85rem;color:var(--text-dim);">\u{1F4CD} ${inc.location || "Unknown"} \u2022 \u{1F464} ${inc.reporter_name || "Anonymous"}</div>
+          <div style="font-weight:600;margin-bottom:0.4rem;">${escapeHtml(inc.type || "Emergency")} <span style="margin-left:0.5rem;font-size:11px;">${triage.label}</span></div>
+          <div style="font-size:0.85rem;color:var(--text-dim);">\u{1F4CD} ${escapeHtml(inc.location || "Unknown")} \u2022 \u{1F464} ${escapeHtml(inc.reporter_name || "Anonymous")}</div>
         </div>
         <span style="color:${inc.status === "resolved" ? "var(--accent-green)" : "var(--accent-red)"}">${inc.status === "resolved" ? "Resolved" : "Pending"}</span>`;
       list.appendChild(card);

@@ -1,6 +1,6 @@
 # ResQNet — Smart Crisis Response Platform
 
-> **Google Solution Challenge 2026** · Built with Firebase · Powered by Gemini AI
+> **Google Solution Challenge 2026** · Built with InsForge (PostgreSQL) · Powered by Multi-Model AI (DeepSeek / Llama)
 
 ---
 
@@ -13,7 +13,7 @@
 - A **volunteer registry** so field responders can self-register and be matched to incidents automatically
 - A **community resources hub** with local helplines and crowd-sourced resource listings
 
-All data is synchronized in real-time via Firebase Firestore, making the platform resilient and responsive even during fast-moving crises.
+All data is synchronized in real-time via InsForge (PostgreSQL), making the platform resilient and responsive even during fast-moving crises.
 
 ---
 
@@ -43,7 +43,7 @@ Every year, thousands of people in under-served communities face emergencies —
 - **Email/Password sign-in** with Firebase Auth
 - **Google OAuth sign-in** via popup — one-click onboarding
 - **Forgot password** flow with email reset link
-- Account creation stores full profile (name, phone, address, role) to Firestore `users` collection
+- Account creation stores full profile (name, phone, address, role) to the InsForge `users` table
 - Auto-redirect if already signed in
 - Friendly inline error messages for all common failure modes
 
@@ -77,12 +77,16 @@ Five incident types, each mapped to a triage level:
 | Resource | 📦 | Minor (Level 4) |
 | Hospitality | 🏠 | Monitoring (Level 5) |
 
-#### Gemini AI Triage
-After submission, the app silently calls **Gemini 2.5 Flash** (falling back to 1.5 Flash) with:
-- Incident type, description, voice transcript, and location
+#### Multi-Model AI Triage
+After submission, the Express backend calls our **AI Cascade Engine**, which attempts:
+1. **DeepSeek V4 Flash** (via NVIDIA NIM)
+2. **Llama 3.3 70b Instruct** (via OpenRouter)
+3. **Mistral 7b Instruct** (via OpenRouter)
+
+- Incident type, description, voice transcript, and location are passed
 - Returns a structured JSON: `{ level, levelName, color, reasoning, volunteerTypes, estimatedMinutes }`
-- The triage result is saved back to Firestore and shown in the success modal
-- A **fallback rule engine** activates if all Gemini models fail (keyword-based heuristics)
+- The triage result is saved back to InsForge and shown in the success modal
+- A **fallback rule engine** activates if all AI models fail (keyword-based heuristics)
 
 #### Incident Feed
 - Live Firestore `onSnapshot` listener — no page refresh needed
@@ -239,24 +243,30 @@ Profile management page for signed-in users.
 └──────────────────────────┬──────────────────────────────────┘
                            │
           ┌────────────────▼─────────────────┐
-          │         Firebase Backend          │
+          │     Express.js API Server        │
+          │  (Triage, Dispatch & Static)     │
+          └────────────────┬─────────────────┘
+                           │
+          ┌────────────────▼─────────────────┐
+          │        InsForge Backend          │
           │  ┌──────────────────────────────┐ │
-          │  │  Firebase Authentication     │ │
+          │  │  Authentication (JWT)        │ │
           │  │  (Email/Password + Google)   │ │
           │  └──────────────────────────────┘ │
           │  ┌──────────────────────────────┐ │
-          │  │  Cloud Firestore (real-time) │ │
-          │  │  ├── /incidents              │ │
-          │  │  │   └── /timeline           │ │
-          │  │  ├── /volunteers             │ │
-          │  │  ├── /resources              │ │
-          │  │  └── /users                  │ │
+          │  │  PostgreSQL (RLS policies)   │ │
+          │  │  ├── incidents               │ │
+          │  │  ├── incident_timeline       │ │
+          │  │  ├── volunteers              │ │
+          │  │  ├── resources               │ │
+          │  │  └── users                   │ │
           │  └──────────────────────────────┘ │
           └────────────────┬─────────────────┘
                            │
           ┌────────────────▼─────────────────┐
           │         External APIs             │
-          │  ├── Gemini 2.5 Flash (AI Triage) │
+          │  ├── NVIDIA NIM (DeepSeek V4)     │
+          │  ├── OpenRouter (Llama / Mistral) │
           │  ├── Nominatim (Reverse Geocode)  │
           │  ├── Leaflet.js (Incident Map)    │
           │  └── Web Speech API (Voice Input) │

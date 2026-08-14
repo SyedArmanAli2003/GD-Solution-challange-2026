@@ -151,10 +151,14 @@
         <button class="cat-btn" data-type="Hospitality">🏠<span>Hospitality</span></button>
       </div>
 
-      <textarea id="incidentDesc" class="modal-textarea" placeholder="Add a short description (optional)..."></textarea>
+      <textarea id="incidentDesc" class="modal-textarea" placeholder="Add a short description (optional)..." maxlength="500"></textarea>
 
       <!-- Visible error shown on Firestore write failure -->
       <p id="submitError" style="display:none;color:#ff6b6b;font-size:13px;margin-bottom:8px;text-align:center;"></p>
+
+      <div class="disclaimer-amber" style="margin-bottom: 0.75rem;">
+        <strong>⚠</strong> For life-threatening emergencies, always call your local emergency number first. ResQNet is a community volunteer tool.
+      </div>
 
       <div class="modal-footer">
         <button id="submitIncident" class="btn-primary">Send SOS Report</button>
@@ -188,7 +192,12 @@
         </div>
         <p id="aiTriageReasoning" style="font-size:0.9rem; color:var(--text-main); margin:0; line-height:1.4;"></p>
       </div>
-      
+
+      <div class="disclaimer-amber" style="margin-bottom: 1rem;">
+        <strong>⚠ Emergency Disclaimer</strong><br>
+        ResQNet connects you with community volunteers. For life-threatening emergencies, always call your local emergency number first.
+      </div>
+
       <div style="display: flex; flex-direction: column; gap: 1rem;">
         <button id="btnSubmitAnother" class="btn-primary" style="padding: 1rem; font-size: 1rem;">Submit another report</button>
         <a href="reporter.html" class="btn-ghost" style="text-decoration: none;">← Back to home</a>
