@@ -1,4 +1,4 @@
-import { insforge, db, auth } from './insforge.js'
+import { db, auth } from './supabase.js'
 
 function escapeHtml(str) { if (!str) return ''; return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;') }
 
@@ -82,17 +82,20 @@ function setSidebarProfile(name, email, uid, extras = {}) {
   if (avatarEl) avatarEl.textContent = initials
   if (nameEl) nameEl.textContent = fn
   if (emailEl) emailEl.textContent = email || ''
+  localStorage.setItem('resqnet_user_profile', JSON.stringify({ uid, fullName: fn, email, ...extras }))
   sessionStorage.setItem('userProfile', JSON.stringify({ uid, fullName: fn, email, ...extras }))
 }
 
 async function loadUserProfile(user) {
-  const fn = user.displayName || user.email?.split('@')[0] || 'User'
-  setSidebarProfile(fn, user.email || '', user.id, {})
+  const fn = user.displayName || user.fullName || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'
+  setSidebarProfile(fn, user.email || '', user.id, user)
 
-  const { data } = await db.from('users').select('*').eq('id', user.id).single()
-  if (data) {
-    setSidebarProfile(data.full_name || data.name || fn, user.email || data.email || '', user.id, data)
-  }
+  try {
+    const { data } = await db.from('users').select('*').eq('id', user.id).single()
+    if (data) {
+      setSidebarProfile(data.full_name || data.name || fn, user.email || data.email || '', user.id, data)
+    }
+  } catch { }
 }
 
 async function reverseGeocode(lat, lng) {

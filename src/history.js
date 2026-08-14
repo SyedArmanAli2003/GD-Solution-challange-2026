@@ -1,4 +1,4 @@
-import { db, auth } from './insforge.js'
+import { db, auth } from './supabase.js'
 
 const historyList = document.getElementById('historyList')
 const filterTabs = document.querySelectorAll('.filter-tab')

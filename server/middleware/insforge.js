@@ -5,12 +5,12 @@ let dbInstance;
 
 function getDb() {
   if (!dbInstance) {
-    const { createClient } = require('@insforge/sdk');
-    const supabaseUrl = process.env.INSFORGE_URL || 'https://pk5eng7w.ap-southeast.insforge.app';
-    const supabaseKey = process.env.INSFORGE_SERVICE_ROLE_KEY || process.env.INSFORGE_ANON_KEY || 'anon_8cdce68be8188b489d5c12ad3b86adff9054b6599225e0f9dc950f611e7468a8';
+    const { createClient } = require('@supabase/supabase-js');
+    const supabaseUrl = process.env.SUPABASE_URL || 'https://ckjiukvxqqvjmpxhpclb.supabase.co';
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNraml1a3Z4cXF2am1weGhwY2xiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1MjYxMTgsImV4cCI6MjA5ODEwMjExOH0.VWi7wlZdGKVF0q-9bF3bStOh6w-dW1eK9l-PqzBJmjI';
 
-    dbInstance = createClient({ baseUrl: supabaseUrl, anonKey: supabaseKey });
-    console.log('[InsForge] Client initialized');
+    dbInstance = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
+    console.log('[Supabase] Client initialized');
   }
   return dbInstance;
 }

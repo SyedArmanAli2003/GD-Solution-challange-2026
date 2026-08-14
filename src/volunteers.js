@@ -1,4 +1,4 @@
-import { db, auth } from './insforge.js'
+import { db, auth } from './supabase.js'
 
 function escapeHtml(str) { if (!str) return ''; return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;') }
 

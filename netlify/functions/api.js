@@ -1,20 +1,21 @@
-const { createClient } = require('@insforge/sdk');
+const { createClient } = require('@supabase/supabase-js');
 
 // ── Environment & Config ──────────────────────────────────────────────────────
-const INSFORGE_URL = process.env.INSFORGE_URL || 'https://pk5eng7w.ap-southeast.insforge.app';
-const INSFORGE_ANON_KEY = process.env.INSFORGE_ANON_KEY || '';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://ckjiukvxqqvjmpxhpclb.supabase.co';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNraml1a3Z4cXF2am1weGhwY2xiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1MjYxMTgsImV4cCI6MjA5ODEwMjExOH0.VWi7wlZdGKVF0q-9bF3bStOh6w-dW1eK9l-PqzBJmjI';
 const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY || '';
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
 
-let dbClient = null;
+let supabaseClient = null;
 function getDb() {
-  if (!dbClient) {
-    dbClient = createClient({
-      baseUrl: INSFORGE_URL,
-      anonKey: process.env.INSFORGE_SERVICE_ROLE_KEY || INSFORGE_ANON_KEY
-    });
+  if (!supabaseClient) {
+    supabaseClient = createClient(
+      SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY,
+      { auth: { persistSession: false } }
+    );
   }
-  return dbClient;
+  return supabaseClient;
 }
 
 // ── AI Model Registry ────────────────────────────────────────────────────────
@@ -219,7 +220,7 @@ exports.handler = async (event, _context) => {
     if (path === '/health' && method === 'GET') {
       return jsonResponse(200, {
         status: 'ok',
-        service: 'ResQNet Backend (Netlify Functions & InsForge)',
+        service: 'ResQNet Backend (Supabase PostgreSQL & Netlify Functions)',
         timestamp: new Date().toISOString(),
       });
     }
@@ -284,21 +285,21 @@ Level guide: 1=Critical(red), 2=Severe(orange), 3=Moderate(yellow), 4=Minor(gree
 
     // ── Incidents Routes ──
     if (path === '/incidents' && method === 'GET') {
-      const { data, error } = await getDb().database.from('incidents').select('*').order('created_at', { ascending: false });
+      const { data, error } = await getDb().from('incidents').select('*').order('created_at', { ascending: false });
       if (error) throw error;
       return jsonResponse(200, data || []);
     }
 
     if (path.match(/^\/incidents\/([^/]+)\/timeline$/) && method === 'GET') {
       const incidentId = path.match(/^\/incidents\/([^/]+)\/timeline$/)[1];
-      const { data, error } = await getDb().database.from('incident_timeline').select('*').eq('incident_id', incidentId).order('created_at', { ascending: true });
+      const { data, error } = await getDb().from('incident_timeline').select('*').eq('incident_id', incidentId).order('created_at', { ascending: true });
       if (error) throw error;
       return jsonResponse(200, data || []);
     }
 
     if (path.match(/^\/incidents\/([^/]+)$/) && method === 'GET') {
       const incidentId = path.match(/^\/incidents\/([^/]+)$/)[1];
-      const { data, error } = await getDb().database.from('incidents').select('*').eq('id', incidentId).single();
+      const { data, error } = await getDb().from('incidents').select('*').eq('id', incidentId).single();
       if (error) throw error;
       if (!data) return jsonResponse(404, { error: 'Incident not found' });
       return jsonResponse(200, data);
@@ -314,7 +315,7 @@ Level guide: 1=Critical(red), 2=Severe(orange), 3=Moderate(yellow), 4=Minor(gree
         reporterId = authHeader.replace('Bearer ', '').slice(0, 36);
       }
 
-      const { data: incident, error } = await getDb().database.from('incidents').insert([{
+      const { data: incident, error } = await getDb().from('incidents').insert([{
         type,
         description: description || '',
         location: location || 'Unknown location',
@@ -324,12 +325,13 @@ Level guide: 1=Critical(red), 2=Severe(orange), 3=Moderate(yellow), 4=Minor(gree
         triage_complete: false,
         reporter_id: reporterId,
         reporter_name: reporterName || 'Anonymous',
+        reporter_phone: reporterPhone || null
       }]).select('id').single();
 
       if (error) throw error;
 
       try {
-        await getDb().database.from('incident_timeline').insert([{
+        await getDb().from('incident_timeline').insert([{
           incident_id: incident.id,
           action: 'created',
           actor: reporterName || 'reporter',
@@ -357,21 +359,21 @@ Level guide: 1=Critical(red), 2=Severe(orange), 3=Moderate(yellow), 4=Minor(gree
       if (mappedUpdates.status === 'resolved') {
         mappedUpdates.resolved_at = new Date().toISOString();
         try {
-          const { data: inc } = await getDb().database.from('incidents').select('assigned_volunteer_id').eq('id', incidentId).single();
+          const { data: inc } = await getDb().from('incidents').select('assigned_volunteer_id').eq('id', incidentId).single();
           if (inc?.assigned_volunteer_id) {
-            await getDb().database.from('volunteers').update({ available: true, active_incident_id: null }).eq('id', inc.assigned_volunteer_id);
+            await getDb().from('volunteers').update({ available: true, active_incident_id: null }).eq('id', inc.assigned_volunteer_id);
           }
         } catch { }
       }
 
-      const { error } = await getDb().database.from('incidents').update(mappedUpdates).eq('id', incidentId);
+      const { error } = await getDb().from('incidents').update(mappedUpdates).eq('id', incidentId);
       if (error) throw error;
       return jsonResponse(200, { message: 'Incident updated' });
     }
 
     // ── Volunteers Routes ──
     if (path === '/volunteers' && method === 'GET') {
-      const { data, error } = await getDb().database.from('volunteers').select('*').order('registered_at', { ascending: false });
+      const { data, error } = await getDb().from('volunteers').select('*').order('registered_at', { ascending: false });
       if (error) throw error;
       return jsonResponse(200, data || []);
     }
@@ -382,7 +384,7 @@ Level guide: 1=Critical(red), 2=Severe(orange), 3=Moderate(yellow), 4=Minor(gree
         return jsonResponse(400, { error: 'Name, phone, and skill are required' });
       }
 
-      const { data, error } = await getDb().database.from('volunteers').insert([{
+      const { data, error } = await getDb().from('volunteers').insert([{
         name,
         phone,
         skill,
@@ -407,14 +409,14 @@ Level guide: 1=Critical(red), 2=Severe(orange), 3=Moderate(yellow), 4=Minor(gree
         mappedUpdates[snakeKey] = updates[key];
       }
 
-      const { error } = await getDb().database.from('volunteers').update(mappedUpdates).eq('id', volunteerId);
+      const { error } = await getDb().from('volunteers').update(mappedUpdates).eq('id', volunteerId);
       if (error) throw error;
       return jsonResponse(200, { message: 'Volunteer updated' });
     }
 
     // ── Resources Routes ──
     if (path === '/resources' && method === 'GET') {
-      const { data, error } = await getDb().database.from('resources').select('*').order('created_at', { ascending: false });
+      const { data, error } = await getDb().from('resources').select('*').order('created_at', { ascending: false });
       if (error) throw error;
       return jsonResponse(200, data || []);
     }
@@ -425,7 +427,7 @@ Level guide: 1=Critical(red), 2=Severe(orange), 3=Moderate(yellow), 4=Minor(gree
         return jsonResponse(400, { error: 'Name, type, and contact are required' });
       }
 
-      const { data, error } = await getDb().database.from('resources').insert([{
+      const { data, error } = await getDb().from('resources').insert([{
         name,
         type,
         contact,

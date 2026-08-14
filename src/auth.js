@@ -1,8 +1,8 @@
-import { insforge, db, auth } from './insforge.js'
+import { db, auth } from './supabase.js'
 
 function isValidPhone(p) { return /^[\d+\-(). ]{7,20}$/.test(p) }
 
-// ── InsForge Auth — redirect signed-in users away from the auth page ──────────
+// ── Supabase Auth — redirect signed-in users away from the auth page ──────────
 async function checkAuth() {
   const { data } = await auth.getCurrentUser()
   if (data?.user) {
@@ -62,10 +62,6 @@ document.getElementById('btnSignIn')?.addEventListener('click', async () => {
     const { data, error } = await auth.signInWithPassword({ email, password })
     if (error) throw error
 
-    const { data: profile } = await db.from('users').select('*').eq('id', data.user.id).single()
-    if (profile) {
-      sessionStorage.setItem('userProfile', JSON.stringify({ ...profile, uid: data.user.id }))
-    }
     window.location.href = 'reporter.html'
   } catch (err) {
     setLoading(btn, 'Sign In', false)
@@ -112,34 +108,13 @@ document.getElementById('btnCreate')?.addEventListener('click', async () => {
       email,
       password: pass,
       name,
+      phone,
+      address,
       redirectTo: window.location.origin + '/auth.html'
     })
     if (error) throw error
 
-    const profile = {
-      id: data.user.id,
-      email,
-      full_name: name.trim(),
-      name: name.trim(),
-      phone: phone.replace(/[^\d+]/g, ''),
-      address: (address || '').trim(),
-      role: 'reporter',
-      created_at: new Date().toISOString(),
-      total_reports: 0,
-      avatar: ''
-    }
-
-    const { error: dbError } = await db.from('users').insert([profile])
-    if (dbError) console.warn('[auth] Profile insert warning:', dbError.message)
-
-    sessionStorage.setItem('userProfile', JSON.stringify({ ...profile, uid: data.user.id }))
-
-    if (data.requireEmailVerification) {
-      showToast('Account created! Check your email to verify and then sign in.')
-      setTimeout(() => window.location.href = 'auth.html', 3000)
-    } else {
-      window.location.href = 'reporter.html'
-    }
+    window.location.href = 'reporter.html'
   } catch (err) {
     setLoading(btn, 'Create Account', false)
     const msgs = {
@@ -159,13 +134,13 @@ async function googleSignIn(btn, errId, label) {
   try {
     const { data, error } = await auth.signInWithOAuth({ provider: 'google' })
     if (error) throw error
-    window.location.href = data.url
+    if (data?.url) window.location.href = data.url
   } catch (err) {
     btn.innerHTML = GOOGLE_SVG + ' ' + label
     btn.disabled = false
     const msgs = {
       'popup_closed': 'Sign in cancelled.',
-      'unauthorized_domain': 'Domain not authorised in InsForge Console.'
+      'unauthorized_domain': 'Domain not authorised in Supabase Console.'
     }
     showErr(errId, msgs[err.message] || 'Google sign in failed: ' + err.message)
   }

@@ -4,7 +4,7 @@ const { getDb } = require('../middleware/insforge');
 
 router.get('/', async (_req, res) => {
   try {
-    const { data, error } = await getDb().database.from('volunteers').select('*').order('registered_at', { ascending: false });
+    const { data, error } = await getDb().from('volunteers').select('*').order('registered_at', { ascending: false });
     if (error) throw error;
     res.json(data);
   } catch (err) {
@@ -20,7 +20,7 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Name, phone, and skill are required' });
     }
 
-    const { data, error } = await getDb().database.from('volunteers').insert([{
+    const { data, error } = await getDb().from('volunteers').insert([{
       name,
       phone,
       skill,
@@ -50,7 +50,7 @@ router.patch('/:id', async (req, res) => {
        mappedUpdates[snakeKey] = updates[key];
     }
 
-    const { error } = await getDb().database.from('volunteers').update(mappedUpdates).eq('id', req.params.id);
+    const { error } = await getDb().from('volunteers').update(mappedUpdates).eq('id', req.params.id);
     if (error) throw error;
     
     res.json({ message: 'Volunteer updated' });

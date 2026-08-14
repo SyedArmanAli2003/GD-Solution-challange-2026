@@ -1,6 +1,6 @@
 import * as esbuild from 'esbuild'
 
-const pages = ['auth', 'coordinator', 'reporter', 'volunteers', 'resources', 'history']
+const pages = ['auth', 'coordinator', 'reporter', 'volunteers', 'resources', 'history', 'account']
 
 await esbuild.build({
   entryPoints: pages.map(p => `src/${p}.js`),
@@ -13,8 +13,8 @@ await esbuild.build({
   minify: false,
   external: ['crypto'],
   define: {
-    'process.env.INSFORGE_URL': JSON.stringify('https://pk5eng7w.ap-southeast.insforge.app'),
-    'process.env.INSFORGE_ANON_KEY': JSON.stringify('anon_8cdce68be8188b489d5c12ad3b86adff9054b6599225e0f9dc950f611e7468a8'),
+    'process.env.SUPABASE_URL': JSON.stringify('https://ckjiukvxqqvjmpxhpclb.supabase.co'),
+    'process.env.SUPABASE_ANON_KEY': JSON.stringify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNraml1a3Z4cXF2am1weGhwY2xiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1MjYxMTgsImV4cCI6MjA5ODEwMjExOH0.VWi7wlZdGKVF0q-9bF3bStOh6w-dW1eK9l-PqzBJmjI'),
     'process.env.OPENROUTER_API_KEY': JSON.stringify(''),
   },
 })

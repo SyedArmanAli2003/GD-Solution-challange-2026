@@ -3,8 +3,9 @@
 node_modules/
 deploy_dist/
 .firebase/
+test-browser.js
 
-# InsForge & AI agent skills
+# Agent configurations
 .insforge
 .agent
 .agents
